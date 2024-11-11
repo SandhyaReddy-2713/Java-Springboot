@@ -39,7 +39,7 @@ pipeline {
             steps {
              script {
                  
-                    sh 'docker build -t java-spring .'
+                    sh 'docker build -t java-spring-image .'
                     }
                   }
         }
@@ -55,7 +55,7 @@ pipeline {
         stage('docker container') {
             steps {
              script {
-                    sh 'docker run -itd --name ci-cd-container -p 8085:8081 java-spring'
+                    sh 'docker run -itd --name ci-cd-container -p 8085:8081 java-spring-image'
                   }
               }
             
@@ -65,7 +65,7 @@ pipeline {
     post {
         always {
             echo 'slack Notification.'
-            slackSend channel: '#pipeline-job',
+            slackSend channel: '#todays-channel',
             color: COLOR_MAP [currentBuild.currentResult],
             message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} \n More info at: ${env.BUILD_URl}"
             
