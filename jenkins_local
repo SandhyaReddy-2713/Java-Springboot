@@ -1,0 +1,31 @@
+pipeline {
+    agent any
+    }
+    triggers {
+        pollSCM('H/2 * * * *')
+    }
+    stages {
+        stage('git checkout') {
+            steps {
+                git 'https://github.com/SandhyaReddy-2713/Java-Springboot.git'
+            }
+        }
+        stage('build') {
+            steps {
+                bat 'mvn clean install'
+            }
+        }
+        stage('test') {
+            steps {
+                echo 'this is test phase'
+            }
+        }
+        stage('deploy') {
+            steps {
+                echo 'this is deploy phase'
+            }
+        }
+    }
+}
+
+       
