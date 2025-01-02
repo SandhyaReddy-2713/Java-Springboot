@@ -1,7 +1,10 @@
 pipeline {
     agent any
     triggers {
-        pollSCM('H/1 * * * *')
+        //pollscm for every 1min
+        #pollSCM('H/1 * * * *')
+        //build periodically for every specific time
+        cron('H/1 * * * *')
     }
     stages {
         stage('git checkout') {
