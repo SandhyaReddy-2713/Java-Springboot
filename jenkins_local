@@ -1,9 +1,6 @@
 pipeline {
     agent any
     triggers {
-        //pollscm for every 1min
-        #pollSCM('H/1 * * * *')
-        //build periodically for every specific time
         cron('H/1 * * * *')
     }
     stages {
