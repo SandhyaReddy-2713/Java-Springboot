@@ -1,31 +1,100 @@
+
+
+       
+ef COLOR_MAP = [
+    'SUCCESS': 'good',
+    'FAILURE': 'danger'
+    ]
 pipeline {
     agent any
-    }
-    triggers {
-        pollSCM('H/2 * * * *')
+     environment {
+        SCANNER_HOME = tool 'sonarqube'
     }
     stages {
+        stage('clean workspace') {
+            steps {
+                cleanWs ()
+            }
+        }
         stage('git checkout') {
             steps {
-                git 'https://github.com/SandhyaReddy-2713/Java-Springboot.git'
+             git branch: 'main', url: 'https://github.com/SandhyaReddy-2713/Java-Springboot.git'
             }
         }
-        stage('build') {
+         stage('compile') {
             steps {
-                sh 'mvn clean install'
+              sh 'mvn compile'
             }
         }
-        stage('test') {
+         stage('code analysis') {
             steps {
-                echo 'this is test phase'
+              withSonarQubeEnv('sonar-server') {
+               sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=java-spring \
+               -Dsonar.java.binaries=. \
+               -Dsonar.projectKey=java-spring'''
+              }
             }
         }
-        stage('deploy') {
+         stage('file-scan') {
             steps {
-                echo 'this is deploy phase'
+                sh 'trivy fs --security-checks vuln --severity HIGH,CRITICAL -f json -o files-trivy-scan.json .'
+            }
+         }
+        stage('Clean UP') {
+            steps {
+                sh 'docker stop $(docker ps -q) || true'
+                sh 'docker rm $(docker ps -aq) || true'
+                sh 'docker rmi $(docker images -q) || true'
+            }
+         }
+         stage('docker build') {
+            steps {
+              sh 'docker build -t sandhyareddy2713/java-images .'
+            }
+        }
+         stage('trivy') {
+            steps {
+                sh 'trivy --severity LOW,MEDIUM -f table -o image-scan.html sandhyareddy2713/java-images'
+            }
+         }
+         stage('docker push') {
+            steps {
+             script {
+                withDockerRegistry(credentialsId: 'docker-credentials', toolName: 'docker') {
+                    sh 'docker push sandhyareddy2713/java-images'
+                  }
+              }
+            }
+         }    
+        stage('Run Docker Container') {
+          steps {
+            sh 'docker run -itd --name java-cont -p 8086:8080 sandhyareddy2713/java-images'
+        }
+     } 
+   }	
+    post {
+        always {
+            echo 'Slack Notification.'
+            slackSend channel: '#java-channel',
+                      color: COLOR_MAP[currentBuild.currentResult],
+                      message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER} \n More info at: ${env.BUILD_URL}"
+
+            script {
+                emailext(
+                    subject: "Jenkins Build Notification - ${currentBuild.fullDisplayName}",
+                    body: """
+                        <h2>Build Notification</h2>
+                        <p>Project: ${JOB_NAME}</p>
+                        <p>Build Number: ${BUILD_NUMBER}</p>
+                        <p>Status: ${currentBuild.currentResult}</p>
+                        <p>View build: <a href="${BUILD_URL}">${BUILD_URL}</a></p>
+                    """,
+                    to: 'pulakuntasandhyareddy@gmail.com',
+                    from: 'jenkins@gmail.com',
+                    replyTo: 'jenkins@gmail.com',
+                    mimeType: 'text/html'
+                )
             }
         }
     }
 }
-
-       
